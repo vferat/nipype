@@ -39,23 +39,83 @@ FSVersion = Info.looseversion().vstring
 
 
 class MidefaceInputSpec(FSTraitedSpec):
-    dicom_info_file = File(
+    input = File(
         argstr="--i %s",
         usedefault=False,
-        desc="file to which results are written",
+        desc="Volume to deface.",
+        exists=True
     )
-    sortbyrun = traits.Bool(argstr="--sortbyrun", desc="assign run numbers")
-    summarize = traits.Bool(
-        argstr="--summarize", desc="only print out info for run leaders"
+    output = File(
+        argstr="--o %s",
+        usedefault=False,
+        desc="defaced input.",
+        exists=False
     )
+    facemask = File(
+        argstr="--facemask %s",
+        usedefault=False,
+        desc="facemask.",
+        exists=True
+    )
+    odir = Directory(
+        argstr="--odir %s",
+        usedefault=False,
+        desc="output dir.",
+        exists=False
+    )
+    xmask = File(
+        argstr="--xmask %s",
+        usedefault=False,
+        desc="Exclusion mask.",
+        exists=True
+    )
+    imconvert = File(
+        argstr="--imconvert %s",
+        usedefault=False,
+        desc="Path to imagemagik convert binary (for pics).",
+        exists=True
+    )
+    # samseg
+    samseg_ndilations = traits.Int(argstr="--xmask-samseg %s", desc="segment input using samseg (14GB, +~20-40min)")
+    samseg_json = File(
+        argstr="--samseg-json %s",
+        usedefault=False,
+        desc="json: configure samseg",
+        exists=True
+    )
+    samesegfast = traits.Bool(argstr="--samseg-fast", desc="configure samseg to run quickly; sets ndil=1 (default)",
+                              xor=['nosamesegfast'])
+    nosamesegfast = traits.Bool(argstr="--samseg-fast", desc="configure samseg to run quickly; sets ndil=1 (default)",
+                                xor=['samesegfast'])
+    # synthseg
+    synthseg_ndilations = traits.Int(argstr="--xmask-synthseg %s", desc="segment input using synthseg (35GB, +~20min)")
+    # fill
+    fill_zero = traits.Bool(argstr="--fill-zero")
+    # Deface geometry
+    noears = traits.Bool(argstr="--no-ears", desc="do not include ears in the defacing")
+    backofhead = traits.Bool(argstr="--back-of-head", desc="include back of head in the defacing")
+    forehead = traits.Bool(argstr="--forehead", desc="include forehead in the defacing (risks removing brain)")
+    # Post proc
+    pics = traits.Bool(argstr="--pics", desc="take pics")
+    nopost = traits.Bool(argstr="--no-post", desc="do not make a head surface after defacing")
+    threads = traits.Int(argstr="--threads", desc="nthreads")
+    force = traits.Bool(argstr="--force", desc="force reprocessing (not applicable if --odir has not been used)",
+                      requires=['odir'])
+    # Output type
+    nii = traits.Bool(argstr="--nii", desc="use nifti format as output (only when output files are not specified)",
+                      xor=['output', 'niigz', 'mgz'])
+    niigz = traits.Bool(argstr="--nii.gz", desc="use compressed nifti format as output (only when output files are not specified)",
+                      xor=['output', 'nii', 'mgz'])
+    mgz = traits.Bool(argstr="--nii.gz", desc="use compressed mgh format as output.",
+                      xor=['output', 'nii', 'niigz'])
 
 
 class MidefaceOutputSpec(TraitedSpec):
-    dicom_info_file = File(exists=True, desc="text file containing dicom information")
+    outfile = File(exists=True, desc="text file containing dicom information")
 
 
 class Mideface(FSCommand):
-    """Uses mri_parse_sdcmdir to get information from dicom directories
+    """Uses midefacer a minimally invasive defacing tool.
 
     Examples
     --------
@@ -70,7 +130,7 @@ class Mideface(FSCommand):
 
     """
 
-    _cmd = "mri_parse_sdcmdir"
+    _cmd = "mideface"
     input_spec = MidefaceInputSpec
     output_spec = MidefaceOutputSpec
 
